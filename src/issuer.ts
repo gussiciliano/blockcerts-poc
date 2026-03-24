@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid'
 import fs from 'fs/promises'
 import path from 'path'
 import { sha256, signMessage, loadKey } from './utils/crypto'
+import * as jsonld from 'jsonld'
 import { anchorToEthereum } from './utils/eth'
 
 type Subject = { id?: string; [k: string]: any }
@@ -19,14 +20,16 @@ export async function issueCredential(subject: Subject, issuerName = 'Demo Issue
     credentialSubject: subject
   }
 
-  // compute hash of credential without proof
-  const hash = sha256(JSON.stringify(credentialWithoutProof))
+  // canonicalize (JSON-LD URDNA2015) and compute hash of credential without proof
+  const canonical = await jsonld.canonize(credentialWithoutProof, { algorithm: 'URDNA2015', format: 'application/n-quads' })
+  const hash = sha256(canonical)
 
   // load issuer secret key
   const secret = await loadKey('keys/issuer.key')
   if (!secret) throw new Error('Issuer key not found. Run gen-keys.')
 
-  const signature = signMessage(secret, Buffer.from(hash, 'hex'))
+  // sign the canonical representation (Ed25519 detached)
+  const signature = signMessage(secret, Buffer.from(canonical, 'utf8'))
 
   const proof = {
     type: 'Ed25519Signature2018',

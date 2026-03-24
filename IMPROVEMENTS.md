@@ -8,6 +8,7 @@ Resumen conciso de los elementos faltantes, riesgos y mejoras sugeridas para el 
 - **Persistencia segura:** `data/anchors.json` se lee/escribe sin control de concurrencia; **riesgo:** corrupción por race conditions. Soluciones: migrar a SQLite o añadir un append-only log con locking.
 - **Validación de inputs:** Falta validación estructural de payloads para `POST /issue` y `POST /verify`. Añadir validación con `ajv` o similar (esquemas JSON/VC mínimos) para evitar inputs malformados.
 - **Determinismo del hash:** Actualmente el hash se calcula usando `JSON.stringify` (orden de propiedades no garantizado). Usar canonical JSON o ordenar keys para evitar falsos negativos en verificación.
+	- Estado: se añadió `jsonld` canonicalization (URDNA2015) y el código canonicaliza antes de hashear.
 - **Manejo de claves:** Claves guardadas en `keys/` en texto plano (aceptable para PoC, peligroso en producción). Documentar y evitar commit; recomendar secret manager/HSM en prod.
 
 **Alta prioridad (mejoran fiabilidad y pruebas)**
@@ -23,6 +24,7 @@ Resumen conciso de los elementos faltantes, riesgos y mejoras sugeridas para el 
 
 **Baja prioridad (mejoras para interoperabilidad y features)**
 - **JSON-LD / W3C VC compatibilidad:** Usar `jsonld` y considerar Linked Data Signatures / LD-CANON para compatibilidad con wallets/verificadores externos.
+	- Estado: se integró `jsonld.canonize` y se generó un archivo `keys/issuer-ld.json` con `publicKeyBase58`. Falta integrar `jsonld-signatures` / `ed25519-signature-2018` para pruebas LD completas.
 - **Generación de QR en UI y endpoint:** Ya se añadió `/cert/:id/qrcode` y botón en `public/index.html`; documentar uso en README.
 - **UI/UX para emisión:** Añadir UI para emitir certificados desde el navegador (form simple que hace `POST /issue`).
 - **Integración con wallets:** Exportar credenciales en formatos aceptados por wallets (VC JSON) y probar import.
@@ -32,9 +34,10 @@ Resumen conciso de los elementos faltantes, riesgos y mejoras sugeridas para el 
 - **Backup y migraciones:** Si se migra a DB, añadir scripts de migración y backup para `anchors` y `certs`.
 
 **Sugerencia de prioridades para los próximos pasos (mínimo viable)**
-1. Añadir validación (`ajv`) y tests unitarios para crypto (1-2 días).
-2. Corregir persistencia (migrar a SQLite) y actualizar lectura/escritura (0.5-1 día).
-3. Evitar regeneración de claves en `seed` y documentar workflow de claves (0.25 día).
+1. Integrar `jsonld-signatures` + `ed25519-signature-2018` para proofs LD completos (1-2 días).
+2. Añadir validación (`ajv`) y tests unitarios para crypto y endpoints (1-2 días).
+3. Corregir persistencia (migrar a SQLite or add append-only log) y actualizar lectura/escritura (0.5-1 día).
+4. Evitar regeneración de claves en `seed` y documentar workflow de claves (0.25 día).
 
 **Archivos a modificar (referencia)**
 - `src/server.ts` — añadir validación, CORS, rate-limiting y respuesta estandarizada.
@@ -43,6 +46,14 @@ Resumen conciso de los elementos faltantes, riesgos y mejoras sugeridas para el 
 - `scripts/seed_example.ts` — no regenerar claves si existen.
 - `README.md` — añadir ejemplos de payloads, flujo (issue → verify → QR) y limitaciones.
 - `package.json` — añadir scripts `build`, `start:prod`, y dependencias de test/lint.
+
+**Cambios realizados en este PoC**
+- `src/utils/merkle.ts`: Merkle root, proof generation and verification.
+- `src/utils/eth.ts`: support for anchoring single hashes and merkle roots via contract.
+- `scripts/deploy_anchor.ts` and `scripts/anchor_batch.ts` added for deploy/anchoring flow.
+- `contracts/Anchor.sol` added (event-based anchor contract).
+- `src/issuer.ts` / `src/verifier.ts` updated to use JSON-LD canonicalization and Ed25519 proofs (PoC signing).
+- `scripts/generate_keys.ts` updated to create LD-compatible `keys/issuer-ld.json`.
 
 **Testnets y pruebas de anclaje (Ethereum)**
 
