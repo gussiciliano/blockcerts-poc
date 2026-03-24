@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Blockcerts PoC - Verify</title>
+  </head>
+  <body>
+    <h1>Verify Credential</h1>
+    <div>
+      <label>Credential JSON (paste):</label><br />
+      <textarea id="cred" rows="12" cols="80"></textarea><br />
+      <button id="btnVerify">Verify</button>
+    </div>
+    <div>
+      <label>Or verify by ID:</label>
+      <input id="certId" placeholder="credential id" />
+      <button id="btnVerifyById">Verify by ID</button>
+      <button id="btnQR">Generate QR</button>
+      <div><img id="qr" alt="QR code" style="max-width:300px;margin-top:8px;"/></div>
+    </div>
+    <pre id="out"></pre>
+    <script>
+      async function postVerify(payload){
+        const res = await fetch('/verify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)})
+        return res.json()
+      }
+      document.getElementById('btnVerify').onclick = async ()=>{
+        const raw = document.getElementById('cred').value
+        try{
+          const c = JSON.parse(raw)
+          const r = await postVerify({ credential: c })
+          document.getElementById('out').textContent = JSON.stringify(r, null, 2)
+        }catch(e){ document.getElementById('out').textContent = 'invalid json' }
+      }
+      document.getElementById('btnVerifyById').onclick = async ()=>{
+        const id = document.getElementById('certId').value.trim()
+        if(!id) return
+        const r = await postVerify({ url: '/cert/'+id })
+        document.getElementById('out').textContent = JSON.stringify(r, null, 2)
+      }
+      document.getElementById('btnQR').onclick = async ()=>{
+        const id = document.getElementById('certId').value.trim()
+        if(!id) return
+        try{
+          const res = await fetch('/cert/'+id+'/qrcode')
+          if(!res.ok) { document.getElementById('out').textContent = 'QR generation failed'; return }
+          const blob = await res.blob()
+          const url = URL.createObjectURL(blob)
+          document.getElementById('qr').src = url
+        }catch(e){ document.getElementById('out').textContent = 'error generating qr' }
+      }
+    </script>
+  </body>
+  </html>
