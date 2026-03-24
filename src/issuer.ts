@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid'
 import fs from 'fs/promises'
 import path from 'path'
 import { sha256, signMessage, loadKey } from './utils/crypto'
+import { anchorToEthereum } from './utils/eth'
 
 type Subject = { id?: string; [k: string]: any }
 
@@ -46,9 +47,20 @@ export async function issueCredential(subject: Subject, issuerName = 'Demo Issue
   const anchorsPath = path.join('data', 'anchors.json')
   let anchors: Array<any> = []
   try { anchors = JSON.parse(await fs.readFile(anchorsPath, 'utf8')) } catch (e) { anchors = [] }
-  anchors.push({ id, hash, timestamp: new Date().toISOString() })
+  const anchorEntry: any = { id, hash, timestamp: new Date().toISOString() }
+
+  // try anchoring to Ethereum (simple PoC). Requires ETH_RPC and ETH_PRIVATE_KEY env vars.
+  try {
+    const txHash = await anchorToEthereum(hash)
+    anchorEntry.ethTx = txHash
+  } catch (e: any) {
+    // fail silently for PoC — keep local anchoring
+    console.warn('Ethereum anchoring skipped:', e.message)
+  }
+
+  anchors.push(anchorEntry)
   await fs.mkdir('data', { recursive: true })
   await fs.writeFile(anchorsPath, JSON.stringify(anchors, null, 2), 'utf8')
 
-  return { id, certPath, hash }
+  return { id, certPath, hash, anchor: anchorEntry }
 }

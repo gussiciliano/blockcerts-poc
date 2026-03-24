@@ -44,4 +44,25 @@ Resumen conciso de los elementos faltantes, riesgos y mejoras sugeridas para el 
 - `README.md` — añadir ejemplos de payloads, flujo (issue → verify → QR) y limitaciones.
 - `package.json` — añadir scripts `build`, `start:prod`, y dependencias de test/lint.
 
+**Testnets y pruebas de anclaje (Ethereum)**
+
+- **Qué es / por qué:** Usar una testnet permite probar el anclaje en una cadena real sin gastar ETH real. Ideal para validar que la transacción que contiene el hash se publica correctamente.
+- **Redes recomendadas:** Sepolia o Goerli (Sepolia suele ser la más estable recientemente).
+- **Cómo probar (rápido):** consigue un RPC (Infura/Alchemy/otro) y test-ETH desde un faucet, luego exporta las variables de entorno y arranca la app:
+
+```bash
+export ETH_RPC=https://sepolia.infura.io/v3/<PROJECT_ID>
+export ETH_PRIVATE_KEY=0x...   # cuenta de prueba con test-ETH
+yarn
+yarn start
+```
+
+- Emite un credential desde la UI (`/public`) o con `POST /issue`; el PoC intentará enviar una tx que incluirá el hash en `data` y guardará el `ethTx` en `data/anchors.json`.
+- **Precauciones:**
+	- Usa sólo claves de prueba en testnets; no pongas claves reales en `ETH_PRIVATE_KEY` ni en repositorios.
+	- Las transacciones en testnet siguen gastando gas (test-ETH). Usa un faucet oficial para obtener fondos.
+	- Si quieres evitar gestionar claves, considera usar una cuenta temporal o un servicio de relayer en pruebas.
+
+Agregar pruebas automáticas que mockeen `anchorToEthereum` puede ayudar a no depender de la testnet para CI.
+
 Si quieres, puedo implementar la primera prioridad ahora: añadir `ajv` para validación y crear tests unitarios para la firma/verificación. ¿Procedo con eso?
