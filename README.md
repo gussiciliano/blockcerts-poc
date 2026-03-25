@@ -45,6 +45,49 @@ yarn start
 
 If the vars are not set, the app will keep working and only store local anchors in `data/anchors.json`.
 
+On‑chain vs off‑chain (por qué TypeScript + Solidity)
+
+- On‑chain (Solidity): el contrato `contracts/Anchor.sol` es el único artefacto que necesita consenso y permanencia en la blockchain. Publica eventos (`AnchorRoot`) con la raíz Merkle o puede recibir un hash en la data de una transacción.
+- Off‑chain (TypeScript): emisión, canonicalización JSON‑LD, firma Ed25519, cálculo de hashes y Merkle proofs, persistencia local, UI/HTTP API y scripts de batching/despliegue. Estas tareas son costosas, no prácticas o imposibles on‑chain por coste y limitaciones técnicas.
+
+Deploy del contrato `Anchor` y anclaje por Merkle (opcional)
+
+1. Preparar entorno (ejemplo con Hardhat):
+
+```bash
+# instalar herramientas (si no las tenés)
+yarn add --dev hardhat @nomiclabs/hardhat-ethers ethers
+npx hardhat init # o crea un proyecto hardhat en esta carpeta
+```
+
+2. Colocar `contracts/Anchor.sol` en el directorio `contracts/` y compilar:
+
+```bash
+npx hardhat compile
+```
+
+3. Desplegar el contrato (usa `scripts/deploy_anchor.ts`): exportar vars y ejecutar:
+
+```bash
+export ETH_RPC=https://sepolia.infura.io/v3/<PROJECT_ID>
+export ETH_PRIVATE_KEY=0xYOUR_TEST_PRIVATE_KEY
+ts-node scripts/deploy_anchor.ts
+```
+
+El script espera encontrar el artefacto compilado en `contracts/Anchor.json` (ABI + bytecode). Tras el despliegue, anota la dirección (`CONTRACT_ADDRESS`) y úsala para `scripts/anchor_batch.ts`.
+
+4. Ejecutar batching para agrupar anchors y publicar la raíz Merkle:
+
+```bash
+export CONTRACT_ADDRESS=0x... # dirección del contrato desplegado
+ts-node scripts/anchor_batch.ts
+```
+
+Precauciones
+- Usá únicamente claves de prueba en testnets. No subir `ETH_PRIVATE_KEY` a repositorios.
+- Publicar en mainnet implica costes de gas.
+
+
 Blockcerts / JSON-LD compatibility (current PoC state)
 
 - This PoC was extended to move toward Blockcerts compatibility:
